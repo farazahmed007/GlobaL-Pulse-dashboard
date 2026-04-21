@@ -158,14 +158,16 @@ def fetch_data():
         blob = TextBlob(text)
         subjectivity_score = blob.sentiment.subjectivity
         
-        # NER for Region
+        # NER for Region and Entities
         region = None
+        entities = []
         if nlp:
             doc = nlp(text)
             for ent in doc.ents:
-                if ent.label_ == "GPE":
+                if ent.label_ == "GPE" and not region:
                     region = ent.text
-                    break
+                elif ent.label_ in ["PERSON", "ORG"]:
+                    entities.append(ent.text)
                     
         word_count = len(row['Summary'].split())
         
@@ -180,10 +182,10 @@ def fetch_data():
                     region = k
                     break
         
-        return pd.Series([sentiment_score, subjectivity_score, sentiment_label, region, lat, lon, word_count])
+        return pd.Series([sentiment_score, subjectivity_score, sentiment_label, region, lat, lon, word_count, entities])
 
     if not df.empty:
-        df[['Sentiment_Score', 'Subjectivity_Score', 'Sentiment_Label', 'Region', 'Latitude', 'Longitude', 'Word_Count']] = df.apply(analyze_row, axis=1)
+        df[['Sentiment_Score', 'Subjectivity_Score', 'Sentiment_Label', 'Region', 'Latitude', 'Longitude', 'Word_Count', 'Entities']] = df.apply(analyze_row, axis=1)
         df = df.dropna(subset=['Latitude', 'Longitude'])
     
     progress_bar.empty()
@@ -330,33 +332,62 @@ with tab1:
 
 with tab2:
     if not df_filtered.empty:
-        c1, c2 = st.columns(2)
+        st.subheader("Intelligence Analytics")
         
-        with c1:
-            st.subheader("2D Analytics")
-            # Bar Chart
+        row1_col1, row1_col2 = st.columns(2)
+        
+        with row1_col1:
+            # Chart 1: Sentiment Over Time (Smooth Area Chart)
+            time_df = df_filtered.groupby('Date')['Sentiment_Score'].mean().reset_index()
+            fig_time = px.area(
+                time_df, x='Date', y='Sentiment_Score', 
+                title="Average Sentiment Over Time",
+                template="plotly_dark",
+                color_discrete_sequence=['#F08D39']
+            )
+            fig_time.update_traces(line_shape='spline')
+            fig_time.update_xaxes(showgrid=False)
+            fig_time.update_yaxes(showgrid=False)
+            fig_time.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_time, use_container_width=True)
+            
+        with row1_col2:
+            # Chart 2: Sentiment by Source (Horizontal Bar Chart)
             bar_df = df_filtered.groupby('Source')['Sentiment_Score'].mean().reset_index()
-            fig_bar = px.bar(bar_df, x='Sentiment_Score', y='Source', orientation='h', title="Average Sentiment by Source", color='Sentiment_Score', color_continuous_scale="Purpor")
-            fig_bar.update_layout(plot_bgcolor='#000000', paper_bgcolor='#000000', font_color='#FFFFFF')
+            bar_df = bar_df.sort_values(by='Sentiment_Score')
+            # Using RdYlGn for dynamic coloring based on average sentiment
+            fig_bar = px.bar(
+                bar_df, x='Sentiment_Score', y='Source', orientation='h', 
+                title="Average Sentiment by Source", 
+                color='Sentiment_Score', 
+                color_continuous_scale="RdYlGn",
+                template="plotly_dark"
+            )
+            fig_bar.update_xaxes(showgrid=False)
+            fig_bar.update_yaxes(showgrid=False)
+            fig_bar.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_bar, use_container_width=True)
             
-            # Line Chart
-            line_df = df_filtered.groupby('Date').size().reset_index(name='Count')
-            fig_line = px.line(line_df, x='Date', y='Count', title="Articles over Time", markers=True)
-            fig_line.update_traces(line_color='#9929EA', fill='tozeroy')
-            fig_line.update_layout(plot_bgcolor='#000000', paper_bgcolor='#000000', font_color='#FFFFFF')
-            st.plotly_chart(fig_line, use_container_width=True)
-            
-            # Pie Chart
+        row2_col1, row2_col2 = st.columns(2)
+        
+        with row2_col1:
+            # Chart 3: Sentiment Distribution (Donut Chart)
             pie_df = df_filtered['Sentiment_Label'].value_counts().reset_index()
             pie_df.columns = ['Label', 'Count']
-            color_map = {'Positive': '#50dc64', 'Negative': '#dc3232', 'Neutral': '#FAEB92'}
-            fig_pie = px.pie(pie_df, values='Count', names='Label', title="Sentiment Distribution", color='Label', color_discrete_map=color_map, hole=0.4)
-            fig_pie.update_layout(plot_bgcolor='#000000', paper_bgcolor='#000000', font_color='#FFFFFF')
+            color_map = {'Positive': '#48C9B0', 'Negative': '#FF6B6B', 'Neutral': '#F9E79F'}
+            fig_pie = px.pie(
+                pie_df, values='Count', names='Label', 
+                title="Sentiment Distribution", 
+                color='Label', color_discrete_map=color_map, 
+                hole=0.4,
+                template="plotly_dark"
+            )
+            fig_pie.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_pie, use_container_width=True)
             
-        with c2:
-            st.subheader("3D News Intelligence Cluster")
+        with row2_col2:
+            # Chart 4: 3D News Intelligence Cluster
+            color_map_3d = {'Positive': '#48C9B0', 'Negative': '#FF6B6B', 'Neutral': '#F9E79F'}
             fig_3d = px.scatter_3d(
                 df_filtered,
                 x='Sentiment_Score',
@@ -366,23 +397,81 @@ with tab2:
                 size='Word_Count',
                 hover_name='Title',
                 hover_data=['Source', 'Region'],
-                color_discrete_map={'Positive': '#50dc64', 'Negative': '#dc3232', 'Neutral': '#FAEB92'},
-                title="3D News Intelligence Cluster"
+                color_discrete_map=color_map_3d,
+                title="3D News Intelligence Cluster",
+                template="plotly_dark",
+                opacity=0.7
             )
-            fig_3d.update_layout(plot_bgcolor='#000000', paper_bgcolor='#000000', font_color='#FFFFFF')
+            fig_3d.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_3d, use_container_width=True)
             
-        st.subheader("Sentiment Heatmap by Region")
-        # Bin sentiments
-        bins = [-1.0, -0.6, -0.2, 0.2, 0.6, 1.0]
-        labels = ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']
-        hm_df = df_filtered.copy()
-        hm_df['Sentiment_Bin'] = pd.cut(hm_df['Sentiment_Score'], bins=bins, labels=labels, include_lowest=True)
-        heatmap_data = hm_df.groupby(['Region', 'Sentiment_Bin']).size().unstack(fill_value=0)
+        st.subheader("Advanced Analysis")
         
-        fig_hm = px.imshow(heatmap_data, text_auto=True, aspect="auto", color_continuous_scale="Purpor", title="Region vs Sentiment Heatmap")
-        fig_hm.update_layout(plot_bgcolor='#000000', paper_bgcolor='#000000', font_color='#FFFFFF')
-        st.plotly_chart(fig_hm, use_container_width=True)
+        row3_col1, row3_col2 = st.columns(2)
+        
+        with row3_col1:
+            # Chart 5: News Objectivity Quadrant (2D Scatter)
+            fig_quadrant = px.scatter(
+                df_filtered,
+                x='Sentiment_Score',
+                y='Subjectivity_Score',
+                hover_name='Title',
+                hover_data=['Source'],
+                title="News Objectivity Quadrant",
+                template="plotly_dark",
+                color_discrete_sequence=['#F08D39']
+            )
+            # Subjectivity score is typically 0 to 1, so the midpoint is 0.5
+            fig_quadrant.add_hline(y=0.5, line_dash="dash", line_color="gray")
+            fig_quadrant.add_vline(x=0, line_dash="dash", line_color="gray")
+            fig_quadrant.update_xaxes(showgrid=False)
+            fig_quadrant.update_yaxes(showgrid=False)
+            fig_quadrant.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_quadrant, use_container_width=True)
+            
+        with row3_col2:
+            # Chart 6: Deep Dive Analysis (Bubble Chart)
+            # Size must be strictly positive. Subjectivity can be 0, so we add a small epsilon
+            df_bubble = df_filtered.copy()
+            df_bubble['Subjectivity_Size'] = df_bubble['Subjectivity_Score'].apply(lambda x: x if x > 0.1 else 0.1)
+            
+            fig_bubble = px.scatter(
+                df_bubble,
+                x='Sentiment_Score',
+                y='Word_Count',
+                size='Subjectivity_Size',
+                hover_name='Title',
+                title="Deep Dive Analysis",
+                template="plotly_dark",
+                color_discrete_sequence=['#BDA6CE'],
+                opacity=0.7
+            )
+            fig_bubble.update_xaxes(showgrid=False)
+            fig_bubble.update_yaxes(showgrid=False)
+            fig_bubble.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_bubble, use_container_width=True)
+
+        # Chart 7: Top Entities Chart (Horizontal Bar Chart)
+        if 'Entities' in df_filtered.columns:
+            all_entities = [ent for sublist in df_filtered['Entities'].dropna() for ent in sublist]
+            if all_entities:
+                entity_counts = pd.Series(all_entities).value_counts().head(10).reset_index()
+                entity_counts.columns = ['Entity', 'Count']
+                entity_counts = entity_counts.sort_values(by='Count', ascending=True)
+                
+                fig_entities = px.bar(
+                    entity_counts,
+                    x='Count',
+                    y='Entity',
+                    orientation='h',
+                    title="Top 10 Mentioned Entities (People & Organizations)",
+                    template="plotly_dark",
+                    color_discrete_sequence=['#F08D39']
+                )
+                fig_entities.update_xaxes(showgrid=False)
+                fig_entities.update_yaxes(showgrid=False)
+                fig_entities.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_entities, use_container_width=True)
 
 with tab3:
     st.subheader("Raw Data Explorer")
