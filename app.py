@@ -19,17 +19,46 @@ theme_css = """
 <style>
 
 
-/* Cards & Surfaces */
-div[data-testid="stMetric"], div.stChatFloatingInputContainer {
-    background-color: #0d0d0d;
-    border: 1px solid #1a1a1a;
-    border-radius: 8px;
-    padding: 10px;
+/* Stats Cards */
+div[data-testid="stMetric"] {
+    background-color: #1E1E1E;
+    border: 1px solid #333333;
+    border-radius: 12px;
+    padding: 24px !important;
+    height: 160px !important;
+    width: 100% !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin-bottom: 16px;
 }
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(255, 140, 0, 0.2);
+    border-color: #FF8C00;
+}
+
+div[data-testid="stMetricValue"] {
+    font-size: 2rem !important;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+div[data-testid="stMetricLabel"] {
+    color: #AAAAAA !important;
+    font-size: 1rem !important;
+    margin-bottom: 8px;
+}
+
 /* Chat bubbles */
 div[data-testid="stChatMessage"] {
-    background-color: #0d0d0d;
-    border: 1px solid #9929EA;
+    background-color: #1a1a1a;
+    border: 1px solid #FF8C00;
     border-radius: 8px;
 }
 </style>
@@ -255,13 +284,14 @@ with tab1:
     if not df_filtered.empty:
         # PyDeck ScatterplotLayer
         def get_color(label):
-            if label == "Positive": return [80, 220, 100, 200]
-            elif label == "Negative": return [220, 50, 50, 200]
-            else: return [250, 235, 146, 200]
+            if label == "Positive": return [0, 255, 128, 200]  # Bright Green
+            elif label == "Negative": return [255, 69, 0, 200]   # Bright Red/Orange
+            else: return [255, 180, 0, 200]                      # Bright Amber
             
         map_df = df_filtered.copy()
         map_df['Color'] = map_df['Sentiment_Label'].apply(get_color)
-        map_df['Radius'] = map_df['Word_Count'] * 80
+        # Base radius + text-based variance to ensure they are large enough globally
+        map_df['Radius'] = 50000 + (map_df['Word_Count'] * 1000) 
         
         # Convert to native python types to avoid pydeck serialization error with numpy types
         import json
@@ -273,7 +303,13 @@ with tab1:
             get_position=["Longitude", "Latitude"],
             get_color="Color",
             get_radius="Radius",
-            pickable=True
+            radius_min_pixels=8,  # Forces minimum visible size regardless of zoom
+            radius_max_pixels=25,
+            pickable=True,
+            filled=True,
+            stroked=True,
+            line_width_min_pixels=1,
+            get_line_color=[255, 255, 255, 150]
         )
         view_state = pdk.ViewState(latitude=20, longitude=0, zoom=1.5)
         st.pydeck_chart(pdk.Deck(
@@ -381,7 +417,8 @@ with tab3:
             st.download_button("Download JSON", data=json_data, file_name="ai_global_pulse.json", mime="application/json")
             
         st.divider()
-        st.subheader("💬 Ask the Data")
+        st.markdown("### 🤖 Ask the Data")
+        st.markdown("<p style='color: #AAAAAA; font-size: 1.1rem;'>Ask questions about global news sentiment and trends. Examples: <i>'Show me Europe'</i>, <i>'Most negative today'</i>, <i>'Compare North America vs Asia'</i></p>", unsafe_allow_html=True)
         
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
@@ -390,9 +427,14 @@ with tab3:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-        chat_query = st.chat_input("Ask about the news... e.g. 'Show me Europe' or 'Most negative today'")
+        # Use columns for a nice inline search form
+        col_input, col_btn = st.columns([4, 1])
+        with col_input:
+            chat_query = st.text_input("Search Query", placeholder="e.g. Show me Europe, Most negative today...", label_visibility="collapsed")
+        with col_btn:
+            ask_pressed = st.button("Ask / Search", use_container_width=True, type="primary")
         
-        if chat_query:
+        if ask_pressed and chat_query:
             st.session_state.chat_history.append({"role": "user", "content": chat_query})
             with st.chat_message("user"):
                 st.markdown(chat_query)
