@@ -25,3 +25,19 @@ A real-time global intelligence dashboard that scrapes live news feeds, processe
    ```bash
    git clone [https://github.com/YourUsername/YourRepoName.git](https://github.com/YourUsername/YourRepoName.git)
    cd YourRepoName
+
+## Install the required dependencies:
+pip install -r requirements.txt
+
+## Download the spaCy English language model:
+python -m spacy download en_core_web_sm
+
+## Run the dashboard:
+streamlit run app.py
+
+## 📂 Project Structure
+app.py: The main Streamlit application containing the UI, visualizations, and NLP logic.
+
+requirements.txt: List of required Python packages.
+
+.streamlit/config.toml: Custom theme configuration for the dark/orange UI.
