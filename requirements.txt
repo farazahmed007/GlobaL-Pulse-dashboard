@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+pydeck
+feedparser
+vaderSentiment
+textblob
+spacy
+requests
+geopy
