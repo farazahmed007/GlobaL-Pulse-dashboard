@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   pipeline_worker:
-    build: .
+    build: ./backend
     container_name: pulse_pipeline_worker
     # Architectural Choice: We override the default CMD to run our extraction script 
     # as a continuous background data ingestion process, completely decoupled from the UI layer.

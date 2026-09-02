@@ -93,7 +93,6 @@ docker compose down
 
 ## Project Structure
 * `frontend/`: Next.js application UI, visualizations, and analytics logic.
-* `sentiment_pipeline.py`: Background ETL script handling data ingestion and database insertion.
-* `Dockerfile` & `docker-compose.yml`: Containerization configuration.
+* `backend/`: Background ETL scripts, Dockerfile, and Python dependencies.
+* `docker-compose.yml`: Containerization configuration.
 * `run.ps1` & `run.bat`: Helper scripts for automated setup and execution.
-* `requirements.txt`: Python dependencies.

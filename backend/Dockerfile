@@ -11,11 +11,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application files (app.py, sentiment_pipeline.py, etc.)
+# Copy the rest of the application files
 COPY . .
 
-# Expose the standard Streamlit port
-EXPOSE 8501
-
-# Default command (this gets overridden in docker-compose.yml for the pipeline_worker)
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Default command for the background worker
+CMD ["python", "sentiment_pipeline.py"]
