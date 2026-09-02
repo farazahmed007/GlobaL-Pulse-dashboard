@@ -2,9 +2,5 @@ streamlit
 pandas
 plotly
 pydeck
-feedparser
-vaderSentiment
-textblob
-spacy
+pymongo
 requests
-geopy

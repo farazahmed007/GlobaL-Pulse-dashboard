@@ -1,15 +1,9 @@
 import streamlit as st
 import pandas as pd
-import feedparser
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from textblob import TextBlob
-import spacy
 import plotly.express as px
 import pydeck as pdk
-import requests
-import datetime
+from pymongo import MongoClient
 import json
-import time
 
 # --- INITIALIZATION ---
 st.set_page_config(page_title="AI Global Pulse", page_icon="🌐", layout="wide")
@@ -17,8 +11,6 @@ st.set_page_config(page_title="AI Global Pulse", page_icon="🌐", layout="wide"
 # CSS Injection for Theme
 theme_css = """
 <style>
-
-
 /* Stats Cards */
 div[data-testid="stMetric"] {
     background-color: #1E1E1E;
@@ -54,249 +46,139 @@ div[data-testid="stMetricLabel"] {
     font-size: 1rem !important;
     margin-bottom: 8px;
 }
-
-/* Chat bubbles */
-div[data-testid="stChatMessage"] {
-    background-color: #1a1a1a;
-    border: 1px solid #FF8C00;
-    border-radius: 8px;
-}
 </style>
 """
 st.markdown(theme_css, unsafe_allow_html=True)
 
-# Spacy Load
-@st.cache_resource
-def load_spacy():
-    try:
-        return spacy.load("en_core_web_sm")
-    except Exception as e:
-        st.error("spaCy model 'en_core_web_sm' not found. Please run: python -m spacy download en_core_web_sm")
-        return None
-
-nlp = load_spacy()
-analyzer = SentimentIntensityAnalyzer()
-
 # Hardcoded Geocoding Dictionary
 GEO_DICT = {
-    "USA": (37.09, -95.71), "United States": (37.09, -95.71), "Washington": (38.90, -77.03), "New York": (40.71, -74.00), "London": (51.50, -0.12),
-    "UK": (55.37, -3.43), "United Kingdom": (55.37, -3.43), "France": (46.22, 2.21), "Paris": (48.85, 2.35), "Germany": (51.16, 10.45),
-    "Berlin": (52.52, 13.40), "India": (20.59, 78.96), "New Delhi": (28.61, 77.20), "Mumbai": (19.07, 72.87), "China": (35.86, 104.19),
-    "Beijing": (39.90, 116.40), "Russia": (61.52, 105.31), "Moscow": (55.75, 37.61), "Japan": (36.20, 138.25), "Tokyo": (35.67, 139.65),
-    "Brazil": (-14.23, -51.92), "Brasilia": (-15.82, -47.92), "Canada": (56.13, -106.34), "Ottawa": (45.42, -75.69), "Australia": (-25.27, 133.77),
-    "Canberra": (-35.28, 149.13), "Sydney": (-33.86, 151.20), "Israel": (31.04, 34.85), "Jerusalem": (31.76, 35.21), "Gaza": (31.50, 34.46),
-    "Ukraine": (48.37, 31.16), "Kyiv": (50.45, 30.52), "Iran": (32.42, 53.68), "Tehran": (35.68, 51.38), "Saudi Arabia": (23.88, 45.07),
-    "Riyadh": (24.71, 46.67), "South Africa": (-30.55, 22.93), "Pretoria": (-25.74, 28.18), "Cape Town": (-33.92, 18.42), "Mexico": (23.63, -102.55),
-    "Mexico City": (19.43, -99.13), "Italy": (41.87, 12.56), "Rome": (41.90, 12.49), "Spain": (40.46, -3.74), "Madrid": (40.41, -3.70),
-    "South Korea": (35.90, 127.76), "Seoul": (37.56, 126.97), "North Korea": (40.33, 127.51), "Pyongyang": (39.03, 125.76), "Egypt": (26.82, 30.80),
-    "Cairo": (30.04, 31.23), "Turkey": (38.96, 35.24), "Ankara": (39.93, 32.85), "Istanbul": (41.00, 28.97), "Pakistan": (30.37, 69.34),
-    "Islamabad": (33.68, 73.04), "Afghanistan": (33.93, 67.70), "Kabul": (34.55, 69.20), "Iraq": (33.22, 43.67), "Baghdad": (33.31, 44.36),
-    "Syria": (34.80, 38.99), "Damascus": (33.51, 36.29), "Lebanon": (33.85, 35.86), "Beirut": (33.89, 35.50), "Yemen": (15.55, 48.51),
-    "Sanaa": (15.36, 44.19), "Nigeria": (9.08, 8.67), "Abuja": (9.07, 7.39), "Kenya": (-1.29, 36.82), "Nairobi": (-1.29, 36.82),
-    "Argentina": (-38.41, -63.61), "Buenos Aires": (-34.60, -58.38), "Colombia": (4.57, -74.29), "Bogota": (4.71, -74.07), "Venezuela": (6.42, -66.58),
-    "Caracas": (10.48, -66.90), "Indonesia": (-0.78, 113.92), "Jakarta": (-6.20, 106.81), "Malaysia": (4.21, 101.97), "Kuala Lumpur": (3.13, 101.68),
-    "Singapore": (1.35, 103.81), "Philippines": (12.87, 121.77), "Manila": (14.59, 120.98), "Vietnam": (14.05, 108.27), "Hanoi": (21.02, 105.83),
-    "Thailand": (15.87, 100.99), "Bangkok": (13.75, 100.50), "Europe": (54.52, 15.25), "Asia": (34.04, 100.61), "Africa": (-8.78, 34.50),
-    "North America": (54.52, -105.25), "South America": (-8.78, -55.49), "Taiwan": (23.69, 120.96), "Taipei": (25.03, 121.56),
-    "Hong Kong": (22.31, 114.16), "Dublin": (53.34, -6.26), "Ireland": (53.14, -7.69), "Scotland": (56.49, -4.20), "Wales": (52.13, -3.78),
-    "Sweden": (60.12, 18.64), "Stockholm": (59.32, 18.06), "Norway": (60.47, 8.46), "Oslo": (59.91, 10.75), "Finland": (61.92, 25.74), "Helsinki": (60.16, 24.93)
+    "USA": (37.09, -95.71), "United States": (37.09, -95.71), 
+    "UK": (55.37, -3.43), "United Kingdom": (55.37, -3.43), 
+    "France": (46.22, 2.21), "Germany": (51.16, 10.45),
+    "India": (20.59, 78.96), "China": (35.86, 104.19),
+    "Russia": (61.52, 105.31), "Japan": (36.20, 138.25), 
+    "Brazil": (-14.23, -51.92), "Canada": (56.13, -106.34), 
+    "Australia": (-25.27, 133.77), "Israel": (31.04, 34.85), 
+    "Ukraine": (48.37, 31.16), "Iran": (32.42, 53.68), 
+    "Saudi Arabia": (23.88, 45.07), "South Africa": (-30.55, 22.93), 
+    "Mexico": (23.63, -102.55), "Italy": (41.87, 12.56), 
+    "Spain": (40.46, -3.74), "South Korea": (35.90, 127.76), 
+    "North Korea": (40.33, 127.51), "Egypt": (26.82, 30.80),
+    "Turkey": (38.96, 35.24), "Pakistan": (30.37, 69.34),
+    "Afghanistan": (33.93, 67.70), "Iraq": (33.22, 43.67), 
+    "Syria": (34.80, 38.99), "Lebanon": (33.85, 35.86), 
+    "Yemen": (15.55, 48.51), "Nigeria": (9.08, 8.67), 
+    "Kenya": (-1.29, 36.82), "Argentina": (-38.41, -63.61), 
+    "Colombia": (4.57, -74.29), "Venezuela": (6.42, -66.58),
+    "Indonesia": (-0.78, 113.92), "Malaysia": (4.21, 101.97), 
+    "Singapore": (1.35, 103.81), "Philippines": (12.87, 121.77), 
+    "Vietnam": (14.05, 108.27), "Thailand": (15.87, 100.99), 
+    "Europe": (54.52, 15.25), "Asia": (34.04, 100.61), "Africa": (-8.78, 34.50),
+    "North America": (54.52, -105.25), "South America": (-8.78, -55.49), 
+    "Taiwan": (23.69, 120.96), "Ireland": (53.14, -7.69), 
+    "Sweden": (60.12, 18.64), "Norway": (60.47, 8.46), "Finland": (61.92, 25.74)
 }
 
-# --- PHASE 1: DATA ENGINE ---
-@st.cache_data(ttl=3600)
-def fetch_data():
-    feeds = {
-        "BBC World": "http://feeds.bbci.co.uk/news/world/rss.xml",
-        "Al Jazeera": "https://www.aljazeera.com/xml/rss/all.xml",
-        "Reuters": "https://feeds.reuters.com/reuters/topNews",
-        "CNN": "http://rss.cnn.com/rss/edition_world.rss",
-        "Times of India": "https://timesofindia.indiatimes.com/rssfeedstopstories.cms"
-    }
-    
-    articles = []
-    
-    progress_bar = st.progress(0, text="Fetching Live News Feeds...")
-    
-    for i, (source, url) in enumerate(feeds.items()):
-        try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries[:20]: # 20 * 5 = 100
-                articles.append({
-                    "Date": entry.get("published", datetime.datetime.now().isoformat()),
-                    "Title": entry.get("title", ""),
-                    "Summary": entry.get("summary", ""),
-                    "URL": entry.get("link", ""),
-                    "Source": source
-                })
-        except Exception as e:
-            continue
-        progress_bar.progress((i + 1) / len(feeds), text=f"Fetched {source}...")
+# --- DATA FETCHING ---
+@st.cache_data(ttl=60)
+def fetch_mongodb_data():
+    try:
+        client = MongoClient("mongodb://localhost:27017/", serverSelectionTimeoutMS=2000)
+        # Verify connection
+        client.admin.command('ping')
+        db = client["pulse_db"]
+        collection = db["global_sentiment"]
+        
+        # Fetch latest 500 documents sorted descending by _id (implicit insertion order)
+        cursor = collection.find().sort([("_id", -1)]).limit(500)
+        docs = list(cursor)
+        
+        if not docs:
+            return pd.DataFrame()
             
-    progress_bar.progress(1.0, text="Processing Data...")
-    df = pd.DataFrame(articles)
-    
-    # Handle dates
-    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-    df['Date'] = df['Date'].dt.date
-    
-    # Sentiment & NLP
-    def analyze_row(row):
-        text = row['Title'] + ". " + row['Summary']
+        # Convert _id to string for dataframe compatibility
+        for doc in docs:
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+                
+        df = pd.DataFrame(docs)
         
-        # VADER Sentiment
-        vs = analyzer.polarity_scores(text)
-        sentiment_score = vs['compound']
-        
-        if sentiment_score >= 0.05:
-            sentiment_label = "Positive"
-        elif sentiment_score <= -0.05:
-            sentiment_label = "Negative"
-        else:
-            sentiment_label = "Neutral"
+        # Apply Geocoding transformation for the map
+        def map_coords(country_name):
+            if not country_name or pd.isna(country_name):
+                return None, None
+            # case insensitive match
+            for k, v in GEO_DICT.items():
+                if k.lower() == str(country_name).lower():
+                    return v[0], v[1]
+            return None, None
             
-        # Subjectivity
-        blob = TextBlob(text)
-        subjectivity_score = blob.sentiment.subjectivity
-        
-        # NER for Region and Entities
-        region = None
-        entities = []
-        if nlp:
-            doc = nlp(text)
-            for ent in doc.ents:
-                if ent.label_ == "GPE" and not region:
-                    region = ent.text
-                elif ent.label_ in ["PERSON", "ORG"]:
-                    entities.append(ent.text)
-                    
-        word_count = len(row['Summary'].split())
-        
-        lat, lon = None, None
-        if region and region in GEO_DICT:
-            lat, lon = GEO_DICT[region]
-        else:
-            # Try to find any known region in the text as a fallback
-            for k in GEO_DICT.keys():
-                if k in text:
-                    lat, lon = GEO_DICT[k]
-                    region = k
-                    break
-        
-        return pd.Series([sentiment_score, subjectivity_score, sentiment_label, region, lat, lon, word_count, entities])
-
-    if not df.empty:
-        df[['Sentiment_Score', 'Subjectivity_Score', 'Sentiment_Label', 'Region', 'Latitude', 'Longitude', 'Word_Count', 'Entities']] = df.apply(analyze_row, axis=1)
-        df = df.dropna(subset=['Latitude', 'Longitude'])
-    
-    progress_bar.empty()
-    return df
-
-# Fetch data and show toast
-if "data_loaded" not in st.session_state:
-    st.session_state.data_loaded = False
-
-df_raw = fetch_data()
-
-if not st.session_state.data_loaded:
-    st.toast("✅ Data refreshed!", icon="✅")
-    st.session_state.data_loaded = True
-
-# --- PHASE 2: STREAMLIT SHELL ---
-st.markdown("<h1 style='color: #F08D39; text-align: center;'>AI Global Pulse Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("<div style='text-align: center; color: #FAEB92; font-size: 1.2rem; margin-top: 0px; margin-bottom: 2rem;'>Real-time sentiment intelligence across the world's news cycle</div>", unsafe_allow_html=True)
-
-# Top Metrics
-col1, col2, col3, col4, col5 = st.columns(5)
-total_articles = len(df_raw)
-avg_sentiment = df_raw['Sentiment_Score'].mean() if total_articles > 0 else 0
-region_sentiment = df_raw.groupby('Region')['Sentiment_Score'].mean().reset_index()
-
-most_negative_region = region_sentiment.loc[region_sentiment['Sentiment_Score'].idxmin()]['Region'] if not region_sentiment.empty else "N/A"
-most_positive_region = region_sentiment.loc[region_sentiment['Sentiment_Score'].idxmax()]['Region'] if not region_sentiment.empty else "N/A"
-most_active_source = df_raw['Source'].mode()[0] if not df_raw.empty else "N/A"
-
-col1.metric("Total Articles Analyzed", total_articles)
-col2.metric("Average Global Sentiment", f"{avg_sentiment:.2f}", delta=f"{avg_sentiment:.2f}", delta_color="normal")
-col3.metric("Most Negative Region", most_negative_region)
-col4.metric("Most Positive Region", most_positive_region)
-col5.metric("Most Active Source", most_active_source)
-
-st.divider()
+        if "country" in df.columns:
+            df[["Latitude", "Longitude"]] = df["country"].apply(lambda c: pd.Series(map_coords(c)))
+            
+        return df
+    except Exception as e:
+        return None
 
 # Sidebar
 with st.sidebar:
-    st.markdown("## 🌐 Global Pulse Filters")
-    st.status("🟢 Live Data", state="complete")
+    st.markdown("## 🌐 Global Pulse Controls")
     
-    if st.button("Refresh Data"):
+    if st.button("Refresh Data", type="primary"):
         st.cache_data.clear()
         st.rerun()
         
     st.divider()
-    
-    sentiment_range = st.slider("Sentiment Range", -1.0, 1.0, (-1.0, 1.0))
-    
-    sources = df_raw['Source'].unique().tolist()
-    selected_sources = st.multiselect("Source Filter", sources, default=sources)
-    
-    regions = df_raw['Region'].dropna().unique().tolist()
-    selected_regions = st.multiselect("Region Filter", regions, default=regions)
-    
-    sentiment_focus = st.radio("Sentiment Focus", ["All", "Positive Only", "Negative Only", "Neutral Only"])
-    
-    valid_dates = df_raw['Date'].dropna()
-    min_date = valid_dates.min() if not valid_dates.empty else datetime.date.today()
-    max_date = valid_dates.max() if not valid_dates.empty else datetime.date.today()
-    date_range = st.date_input("Date Range", [min_date, max_date])
-    
-    st.divider()
     st.markdown("### Legend")
     st.markdown("<span style='color: #50dc64;'>■</span> Positive<br><span style='color: #dc3232;'>■</span> Negative<br><span style='color: #FAEB92;'>■</span> Neutral", unsafe_allow_html=True)
-    
-    st.divider()
-    st.write("Is this data accurate?")
-    st.feedback("thumbs")
 
-# Filtering Logic
-df_filtered = df_raw.copy()
+# Main Title
+st.markdown("<h1 style='color: #F08D39; text-align: center;'>AI Global Pulse Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<div style='text-align: center; color: #FAEB92; font-size: 1.2rem; margin-top: 0px; margin-bottom: 2rem;'>Real-time sentiment intelligence across the world's news cycle</div>", unsafe_allow_html=True)
 
-if not df_filtered.empty:
-    df_filtered = df_filtered[
-        (df_filtered['Sentiment_Score'] >= sentiment_range[0]) & 
-        (df_filtered['Sentiment_Score'] <= sentiment_range[1]) &
-        (df_filtered['Source'].isin(selected_sources)) &
-        (df_filtered['Region'].isin(selected_regions))
-    ]
-    
-    if len(date_range) == 2:
-        df_filtered = df_filtered[(df_filtered['Date'] >= date_range[0]) & (df_filtered['Date'] <= date_range[1])]
-        
-    if sentiment_focus == "Positive Only":
-        df_filtered = df_filtered[df_filtered['Sentiment_Label'] == "Positive"]
-    elif sentiment_focus == "Negative Only":
-        df_filtered = df_filtered[df_filtered['Sentiment_Label'] == "Negative"]
-    elif sentiment_focus == "Neutral Only":
-        df_filtered = df_filtered[df_filtered['Sentiment_Label'] == "Neutral"]
+# Fetch Data
+df = fetch_mongodb_data()
 
-# --- PHASE 3: VISUALIZATIONS ---
-tab1, tab2, tab3 = st.tabs(["Global Map", "Analytics", "Raw Data & Chat"])
+# Defensive UI
+if df is None:
+    st.warning("⚠️ Unable to connect to MongoDB. Is the local instance (localhost:27017) running?")
+    st.stop()
+elif df.empty:
+    st.warning("⚠️ The database is currently empty. The data ingestion pipeline has not populated data yet. Run `python sentiment_pipeline.py` to ingest live news.")
+    st.stop()
+
+# --- METRICS LAYER ---
+col1, col2, col3, col4, col5 = st.columns(5)
+total_articles = len(df)
+avg_sentiment = df['sentiment_score'].mean() if 'sentiment_score' in df.columns else 0
+
+pos_count = len(df[df['sentiment_label'] == 'positive']) if 'sentiment_label' in df.columns else 0
+neu_count = len(df[df['sentiment_label'] == 'neutral']) if 'sentiment_label' in df.columns else 0
+neg_count = len(df[df['sentiment_label'] == 'negative']) if 'sentiment_label' in df.columns else 0
+
+col1.metric("Total Articles", total_articles)
+col2.metric("Average Sentiment", f"{avg_sentiment:.2f}")
+col3.metric("Positive Count", pos_count)
+col4.metric("Neutral Count", neu_count)
+col5.metric("Negative Count", neg_count)
+
+st.divider()
+
+# --- VISUALIZATIONS ---
+tab1, tab2, tab3 = st.tabs(["Global Map", "Sentiment Analytics", "Data Explorer"])
 
 with tab1:
-    st.subheader("Live Sentiment Map")
-    if not df_filtered.empty:
-        # PyDeck ScatterplotLayer
+    st.subheader("Global News Sentiment Map")
+    map_df = df.dropna(subset=['Latitude', 'Longitude']).copy()
+    
+    if not map_df.empty:
         def get_color(label):
-            if label == "Positive": return [0, 255, 128, 200]  # Bright Green
-            elif label == "Negative": return [255, 69, 0, 200]   # Bright Red/Orange
-            else: return [255, 180, 0, 200]                      # Bright Amber
+            if label == "positive": return [0, 255, 128, 200]
+            elif label == "negative": return [255, 69, 0, 200]
+            else: return [255, 180, 0, 200]
             
-        map_df = df_filtered.copy()
-        map_df['Color'] = map_df['Sentiment_Label'].apply(get_color)
-        # Base radius + text-based variance to ensure they are large enough globally
-        map_df['Radius'] = 50000 + (map_df['Word_Count'] * 1000) 
+        map_df['Color'] = map_df['sentiment_label'].apply(get_color)
         
-        # Convert to native python types to avoid pydeck serialization error with numpy types
-        import json
         map_data = json.loads(map_df.to_json(orient='records'))
         
         layer = pdk.Layer(
@@ -304,13 +186,12 @@ with tab1:
             map_data,
             get_position=["Longitude", "Latitude"],
             get_color="Color",
-            get_radius="Radius",
-            radius_min_pixels=8,  # Forces minimum visible size regardless of zoom
-            radius_max_pixels=25,
+            get_radius=80000,
+            radius_min_pixels=10,
+            radius_max_pixels=30,
             pickable=True,
             filled=True,
             stroked=True,
-            line_width_min_pixels=1,
             get_line_color=[255, 255, 255, 150]
         )
         view_state = pdk.ViewState(latitude=20, longitude=0, zoom=1.5)
@@ -318,66 +199,23 @@ with tab1:
             layers=[layer], 
             initial_view_state=view_state,
             map_style="dark",
-            tooltip={"text": "{Title}\nSource: {Source}\nSentiment: {Sentiment_Score}\nRegion: {Region}"}
+            tooltip={"text": "{title}\\nSentiment: {sentiment_score}\\nCountry: {country}"}
         ))
-        
-        with st.expander("Top Headlines by Region"):
-            for region in selected_regions:
-                reg_df = df_filtered[df_filtered['Region'] == region].head(5)
-                if not reg_df.empty:
-                    st.markdown(f"**{region}**")
-                    st.dataframe(reg_df[['Title', 'Source', 'Sentiment_Label']], hide_index=True)
     else:
-        st.warning("No data matches current filters.")
+        st.info("No recognizable country coordinates to display on the map.")
 
 with tab2:
-    if not df_filtered.empty:
-        st.subheader("Intelligence Analytics")
-        
-        row1_col1, row1_col2 = st.columns(2)
-        
-        with row1_col1:
-            # Chart 1: Sentiment Over Time (Smooth Area Chart)
-            time_df = df_filtered.groupby('Date')['Sentiment_Score'].mean().reset_index()
-            fig_time = px.area(
-                time_df, x='Date', y='Sentiment_Score', 
-                title="Average Sentiment Over Time",
-                template="plotly_dark",
-                color_discrete_sequence=['#F08D39']
-            )
-            fig_time.update_traces(line_shape='spline')
-            fig_time.update_xaxes(showgrid=False)
-            fig_time.update_yaxes(showgrid=False)
-            fig_time.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_time, use_container_width=True)
-            
-        with row1_col2:
-            # Chart 2: Sentiment by Source (Horizontal Bar Chart)
-            bar_df = df_filtered.groupby('Source')['Sentiment_Score'].mean().reset_index()
-            bar_df = bar_df.sort_values(by='Sentiment_Score')
-            # Using RdYlGn for dynamic coloring based on average sentiment
-            fig_bar = px.bar(
-                bar_df, x='Sentiment_Score', y='Source', orientation='h', 
-                title="Average Sentiment by Source", 
-                color='Sentiment_Score', 
-                color_continuous_scale="RdYlGn",
-                template="plotly_dark"
-            )
-            fig_bar.update_xaxes(showgrid=False)
-            fig_bar.update_yaxes(showgrid=False)
-            fig_bar.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_bar, use_container_width=True)
-            
-        row2_col1, row2_col2 = st.columns(2)
-        
-        with row2_col1:
-            # Chart 3: Sentiment Distribution (Donut Chart)
-            pie_df = df_filtered['Sentiment_Label'].value_counts().reset_index()
+    st.subheader("Sentiment Insights")
+    row1_col1, row1_col2 = st.columns(2)
+    
+    with row1_col1:
+        if 'sentiment_label' in df.columns:
+            pie_df = df['sentiment_label'].value_counts().reset_index()
             pie_df.columns = ['Label', 'Count']
-            color_map = {'Positive': '#48C9B0', 'Negative': '#FF6B6B', 'Neutral': '#F9E79F'}
+            color_map = {'positive': '#48C9B0', 'negative': '#FF6B6B', 'neutral': '#F9E79F'}
             fig_pie = px.pie(
                 pie_df, values='Count', names='Label', 
-                title="Sentiment Distribution", 
+                title="Sentiment Breakdown", 
                 color='Label', color_discrete_map=color_map, 
                 hole=0.4,
                 template="plotly_dark"
@@ -385,175 +223,36 @@ with tab2:
             fig_pie.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_pie, use_container_width=True)
             
-        with row2_col2:
-            # Chart 4: 3D News Intelligence Cluster
-            color_map_3d = {'Positive': '#48C9B0', 'Negative': '#FF6B6B', 'Neutral': '#F9E79F'}
-            fig_3d = px.scatter_3d(
-                df_filtered,
-                x='Sentiment_Score',
-                y='Subjectivity_Score',
-                z='Word_Count',
-                color='Sentiment_Label',
-                size='Word_Count',
-                hover_name='Title',
-                hover_data=['Source', 'Region'],
-                color_discrete_map=color_map_3d,
-                title="3D News Intelligence Cluster",
-                template="plotly_dark",
-                opacity=0.7
-            )
-            fig_3d.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_3d, use_container_width=True)
+    with row1_col2:
+        if 'country' in df.columns:
+            bar_df = df['country'].dropna().value_counts().head(10).reset_index()
+            bar_df.columns = ['Country', 'Count']
+            bar_df = bar_df.sort_values(by='Count', ascending=True)
             
-        st.subheader("Advanced Analysis")
-        
-        row3_col1, row3_col2 = st.columns(2)
-        
-        with row3_col1:
-            # Chart 5: News Objectivity Quadrant (2D Scatter)
-            fig_quadrant = px.scatter(
-                df_filtered,
-                x='Sentiment_Score',
-                y='Subjectivity_Score',
-                hover_name='Title',
-                hover_data=['Source'],
-                title="News Objectivity Quadrant",
+            fig_bar = px.bar(
+                bar_df, x='Count', y='Country', orientation='h', 
+                title="Top 10 Mentioned Countries", 
                 template="plotly_dark",
                 color_discrete_sequence=['#F08D39']
             )
-            # Subjectivity score is typically 0 to 1, so the midpoint is 0.5
-            fig_quadrant.add_hline(y=0.5, line_dash="dash", line_color="gray")
-            fig_quadrant.add_vline(x=0, line_dash="dash", line_color="gray")
-            fig_quadrant.update_xaxes(showgrid=False)
-            fig_quadrant.update_yaxes(showgrid=False)
-            fig_quadrant.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_quadrant, use_container_width=True)
-            
-        with row3_col2:
-            # Chart 6: Deep Dive Analysis (Bubble Chart)
-            # Size must be strictly positive. Subjectivity can be 0, so we add a small epsilon
-            df_bubble = df_filtered.copy()
-            df_bubble['Subjectivity_Size'] = df_bubble['Subjectivity_Score'].apply(lambda x: x if x > 0.1 else 0.1)
-            
-            fig_bubble = px.scatter(
-                df_bubble,
-                x='Sentiment_Score',
-                y='Word_Count',
-                size='Subjectivity_Size',
-                hover_name='Title',
-                title="Deep Dive Analysis",
-                template="plotly_dark",
-                color_discrete_sequence=['#BDA6CE'],
-                opacity=0.7
-            )
-            fig_bubble.update_xaxes(showgrid=False)
-            fig_bubble.update_yaxes(showgrid=False)
-            fig_bubble.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_bubble, use_container_width=True)
-
-        # Chart 7: Top Entities Chart (Horizontal Bar Chart)
-        if 'Entities' in df_filtered.columns:
-            all_entities = [ent for sublist in df_filtered['Entities'].dropna() for ent in sublist]
-            if all_entities:
-                entity_counts = pd.Series(all_entities).value_counts().head(10).reset_index()
-                entity_counts.columns = ['Entity', 'Count']
-                entity_counts = entity_counts.sort_values(by='Count', ascending=True)
-                
-                fig_entities = px.bar(
-                    entity_counts,
-                    x='Count',
-                    y='Entity',
-                    orientation='h',
-                    title="Top 10 Mentioned Entities (People & Organizations)",
-                    template="plotly_dark",
-                    color_discrete_sequence=['#F08D39']
-                )
-                fig_entities.update_xaxes(showgrid=False)
-                fig_entities.update_yaxes(showgrid=False)
-                fig_entities.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_entities, use_container_width=True)
+            fig_bar.update_xaxes(showgrid=False)
+            fig_bar.update_yaxes(showgrid=False)
+            fig_bar.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_bar, use_container_width=True)
 
 with tab3:
-    st.subheader("Raw Data Explorer")
-    if not df_filtered.empty:
-        st.data_editor(
-            df_filtered[['Date', 'Title', 'Region', 'Source', 'Sentiment_Score', 'Sentiment_Label', 'URL']],
-            use_container_width=True,
-            column_config={
-                "URL": st.column_config.LinkColumn("Article Link"),
-                "Sentiment_Score": st.column_config.ProgressColumn(
-                    "Sentiment",
-                    help="Sentiment Score",
-                    format="%f",
-                    min_value=-1.0,
-                    max_value=1.0,
-                )
-            },
-            hide_index=True
-        )
+    st.subheader("Interactive Data Table")
+    # Clean up the entities array so it displays nicely in the dataframe
+    display_df = df.copy()
+    if 'entities' in display_df.columns:
+        display_df['entities'] = display_df['entities'].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
         
-        st.markdown("### Top 10 Articles")
-        for idx, row in df_filtered.head(10).iterrows():
-            with st.expander(f"{row['Title']} ({row['Source']})"):
-                st.write(row['Summary'])
-                st.markdown(f"[Read full article]({row['URL']})")
-                
-        with st.popover("⬇Download Options"):
-            csv = df_filtered.to_csv(index=False).encode('utf-8')
-            st.download_button("Download CSV", data=csv, file_name="ai_global_pulse.csv", mime="text/csv")
-            
-            json_data = df_filtered.to_json(orient="records")
-            st.download_button("Download JSON", data=json_data, file_name="ai_global_pulse.json", mime="application/json")
-            
-        st.divider()
-        st.markdown("### 🤖 Ask the Data")
-        st.markdown("<p style='color: #AAAAAA; font-size: 1.1rem;'>Ask questions about global news sentiment and trends. Examples: <i>'Show me Europe'</i>, <i>'Most negative today'</i>, <i>'Compare North America vs Asia'</i></p>", unsafe_allow_html=True)
-        
-        if "chat_history" not in st.session_state:
-            st.session_state.chat_history = []
-            
-        for msg in st.session_state.chat_history:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-                
-        # Use columns for a nice inline search form
-        col_input, col_btn = st.columns([4, 1])
-        with col_input:
-            chat_query = st.text_input("Search Query", placeholder="e.g. Show me Europe, Most negative today...", label_visibility="collapsed")
-        with col_btn:
-            ask_pressed = st.button("Ask / Search", use_container_width=True, type="primary")
-        
-        if ask_pressed and chat_query:
-            st.session_state.chat_history.append({"role": "user", "content": chat_query})
-            with st.chat_message("user"):
-                st.markdown(chat_query)
-                
-            with st.chat_message("assistant"):
-                q = chat_query.lower()
-                response = ""
-                if "show me" in q:
-                    region_req = q.replace("show me", "").strip()
-                    res = df_filtered[df_filtered['Region'].str.lower() == region_req]
-                    if not res.empty:
-                        response = f"Top 3 headlines from {region_req.title()}:\n"
-                        for _, r in res.head(3).iterrows():
-                            response += f"- [{r['Title']}]({r['URL']})\n"
-                    else:
-                        response = f"No news found for region: {region_req.title()}"
-                elif "most negative" in q:
-                    res = df_filtered.sort_values(by="Sentiment_Score").head(3)
-                    response = "Top 3 Most Negative Articles:\n"
-                    for _, r in res.iterrows():
-                        response += f"- [{r['Title']}]({r['URL']}) (Score: {r['Sentiment_Score']:.2f})\n"
-                elif "most positive" in q:
-                    res = df_filtered.sort_values(by="Sentiment_Score", ascending=False).head(3)
-                    response = "Top 3 Most Positive Articles:\n"
-                    for _, r in res.iterrows():
-                        response += f"- [{r['Title']}]({r['URL']}) (Score: {r['Sentiment_Score']:.2f})\n"
-                elif "summary" in q:
-                    response = f"**Summary:**\n- Total Articles: {len(df_filtered)}\n- Average Sentiment: {df_filtered['Sentiment_Score'].mean():.2f}"
-                else:
-                    response = "Try: 'show me [Region]', 'most negative', 'most positive', 'summary'"
-                    
-                st.markdown(response)
-                st.session_state.chat_history.append({"role": "assistant", "content": response})
+    cols_to_show = ['title', 'country', 'sentiment_score', 'sentiment_label', 'entities']
+    # Filter to only existing columns
+    cols_to_show = [c for c in cols_to_show if c in display_df.columns]
+    
+    st.dataframe(
+        display_df[cols_to_show],
+        use_container_width=True,
+        hide_index=True
+    )
