@@ -4,6 +4,7 @@ import plotly.express as px
 import pydeck as pdk
 from pymongo import MongoClient
 import json
+import os
 
 # --- INITIALIZATION ---
 st.set_page_config(page_title="AI Global Pulse", page_icon="🌐", layout="wide")
@@ -83,7 +84,8 @@ GEO_DICT = {
 @st.cache_data(ttl=60)
 def fetch_mongodb_data():
     try:
-        client = MongoClient("mongodb://localhost:27017/", serverSelectionTimeoutMS=2000)
+        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
         # Verify connection
         client.admin.command('ping')
         db = client["pulse_db"]

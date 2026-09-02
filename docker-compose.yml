@@ -1,0 +1,52 @@
+version: '3.8'
+
+# Architectural Choice: We use Docker Compose to orchestrate our 3 distinct services, 
+# ensuring they can easily communicate over a shared internal Docker network while maintaining 
+# perfect isolation (microservices architecture).
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: pulse_mongodb
+    ports:
+      - "27017:27017"
+    # Architectural Choice: A persistent named volume ensures that our ingested NLP data 
+    # survives container restarts and isn't lost if the DB container is spun down.
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  pipeline_worker:
+    build: .
+    container_name: pulse_pipeline_worker
+    # Architectural Choice: We override the default CMD to run our extraction script 
+    # as a continuous background data ingestion process, completely decoupled from the UI layer.
+    command: python sentiment_pipeline.py
+    environment:
+      # Use the internal Docker DNS to route to the mongodb container automatically
+      - MONGO_URI=mongodb://mongodb:27017/
+      # Keys can be passed via .env file or exported in the host terminal
+      - NEWS_API_KEY=${NEWS_API_KEY:-your_newsapi_key}
+      - LLM_API_KEY=${LLM_API_KEY:-your_llm_api_key}
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  streamlit_dashboard:
+    build: .
+    container_name: pulse_dashboard
+    ports:
+      - "8501:8501"
+    # Architectural Choice: We explicitly set the command for clarity, running our Streamlit app 
+    # and binding it to 0.0.0.0 so it is accessible from the host machine.
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/
+    # Architectural Choice: The depends_on directive ensures the dashboard won't attempt 
+    # to start until the database container has been initialized, preventing connection crashes.
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
