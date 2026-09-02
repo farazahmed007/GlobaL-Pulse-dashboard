@@ -9,7 +9,7 @@ The data flow operates through an ETL (Extract, Transform, Load) pipeline, pulli
 ```text
 +----------------+      +--------------------------+      +----------------+      +--------------------+
 |                |      |                          |      |                |      |                    |
-|  NewsAPI /     | ---> |   Agentic NLP Pipeline   | ---> |   MongoDB      | ---> |  Streamlit App     |
+|  NewsAPI /     | ---> |   Agentic NLP Pipeline   | ---> |   MongoDB      | ---> |  Next.js App       |
 |  Live Feeds    |      |   (LLM Extraction)       |      |   (Storage)    |      |  (Presentation)    |
 |  (Ingestion)   |      |   (Transformation)       |      |                |      |                    |
 +----------------+      +--------------------------+      +----------------+      +--------------------+
@@ -82,7 +82,7 @@ For Windows users, use the provided automation scripts (`run.bat` or `run.ps1`) 
 
 ### 3. Viewing the Dashboard
 Once the containers are running, open your web browser and navigate to:
-**[http://localhost:8501](http://localhost:8501)**
+**[http://localhost:3000](http://localhost:3000)**
 
 To stop the application, run:
 ```bash
@@ -92,7 +92,7 @@ docker compose down
 ---
 
 ## Project Structure
-* `app.py`: Streamlit application UI, visualizations, and analytics logic.
+* `frontend/`: Next.js application UI, visualizations, and analytics logic.
 * `sentiment_pipeline.py`: Background ETL script handling data ingestion and database insertion.
 * `Dockerfile` & `docker-compose.yml`: Containerization configuration.
 * `run.ps1` & `run.bat`: Helper scripts for automated setup and execution.

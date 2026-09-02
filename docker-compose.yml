@@ -32,18 +32,18 @@ services:
       - mongodb
     restart: unless-stopped
 
-  streamlit_dashboard:
-    build: .
+  nextjs_dashboard:
+    build: 
+      context: ./frontend
     container_name: pulse_dashboard
     ports:
-      - "8501:8501"
-    # Architectural Choice: We explicitly set the command for clarity, running our Streamlit app 
-    # and binding it to 0.0.0.0 so it is accessible from the host machine.
-    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+      - "3000:3000"
+    # Architectural Choice: We inject the internal MongoDB connection string.
+    # The Docker network allows seamless container-to-container communication.
     environment:
       - MONGO_URI=mongodb://mongodb:27017/
     # Architectural Choice: The depends_on directive ensures the dashboard won't attempt 
-    # to start until the database container has been initialized, preventing connection crashes.
+    # to start until the database container has been initialized.
     depends_on:
       - mongodb
     restart: unless-stopped
