@@ -1,9 +1,9 @@
 import os
 import json
 import logging
-import requests
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, PyMongoError
+import requests  # type: ignore
+from pymongo import MongoClient  # type: ignore
+from pymongo.errors import ConnectionFailure, PyMongoError  # type: ignore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

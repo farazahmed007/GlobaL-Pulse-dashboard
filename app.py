@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import plotly.express as px  # type: ignore
 import pydeck as pdk
-from pymongo import MongoClient
+from pymongo import MongoClient  # type: ignore
 import json
 import os
 
