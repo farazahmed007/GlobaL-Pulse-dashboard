@@ -1,0 +1,30 @@
+# Environments
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+.gemini/
+
+# MongoDB data (if any local dumps are stored)
+data/
+db/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
