@@ -38,8 +38,31 @@ Input Text:
 {input_text}
 """
 
-def fetch_headlines():
+def fetch_headlines(mock=False):
     """Fetches the latest global headlines using NewsAPI."""
+    if mock:
+        logging.info("MOCK MODE: Generating synthetic news headlines...")
+        return [
+            {
+                "title": "Global Tech Summit Announces Groundbreaking AI Regulations",
+                "description": "Leaders from 50 nations agree on a new framework for artificial intelligence safety and deployment.",
+                "url": "http://mock.news/1",
+                "publishedAt": "2024-01-01T10:00:00Z"
+            },
+            {
+                "title": "Major Supply Chain Disruptions Hit European Markets",
+                "description": "Unprecedented logistical challenges have caused a sudden dip in manufacturing output across the EU.",
+                "url": "http://mock.news/2",
+                "publishedAt": "2024-01-01T11:30:00Z"
+            },
+            {
+                "title": "Renewable Energy Adoption Reaches All-Time High in South America",
+                "description": "Countries report a 40% increase in solar and wind reliance compared to last year.",
+                "url": "http://mock.news/3",
+                "publishedAt": "2024-01-01T12:15:00Z"
+            }
+        ]
+
     logging.info("Fetching headlines from NewsAPI...")
     url = f"https://newsapi.org/v2/top-headlines?language=en&apiKey={NEWS_API_KEY}"
     
@@ -54,12 +77,31 @@ def fetch_headlines():
         logging.error(f"Error fetching from NewsAPI: {e}")
         return []
 
-def call_llm_api(prompt):
+def call_llm_api(prompt, mock=False):
     """
     Sends the prompt to an LLM API. 
     This example uses the requests library to hit a generic OpenAI-compatible completions endpoint.
     You can adjust the URL and payload to match whichever provider you use (e.g., Anthropic, Gemini, OpenAI).
     """
+    if mock:
+        import random
+        logging.info("MOCK MODE: Simulating LLM extraction and formatting...")
+        sentiment = random.choice(["positive", "neutral", "negative"])
+        score_ranges = {"positive": (0.1, 1.0), "neutral": (-0.1, 0.1), "negative": (-1.0, -0.1)}
+        score = random.uniform(*score_ranges[sentiment])
+        
+        input_text = prompt.split("Input Text:\n")[-1].strip()
+        headline = input_text.split(". ")[0] if ". " in input_text else input_text
+        
+        mock_json = {
+            "title": headline,
+            "country": random.choice(["USA", "EU", "Brazil", "China", "India", None]),
+            "entities": ["MockOrg", "MockPerson"],
+            "sentiment_score": round(score, 2),
+            "sentiment_label": sentiment
+        }
+        return json.dumps(mock_json)
+
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {LLM_API_KEY}",
@@ -89,9 +131,9 @@ def call_llm_api(prompt):
         logging.error(f"Error parsing LLM API response structure: {e}")
         return None
 
-def main():
+def main(mock=False):
     # 1. Fetch latest headlines
-    articles = fetch_headlines()
+    articles = fetch_headlines(mock=mock)
     if not articles:
         logging.warning("No articles fetched. Exiting pipeline.")
         return
@@ -125,7 +167,7 @@ def main():
         prompt = PROMPT_TEMPLATE.format(input_text=text_to_analyze)
         
         # Send to LLM
-        llm_response = call_llm_api(prompt)
+        llm_response = call_llm_api(prompt, mock=mock)
         if not llm_response:
             logging.warning("Received empty response from LLM. Skipping.")
             continue
@@ -161,4 +203,9 @@ def main():
             continue
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Global Pulse Sentiment Pipeline")
+    parser.add_argument("--mock", action="store_true", help="Run the pipeline with synthetic data instead of live APIs.")
+    args = parser.parse_args()
+    
+    main(mock=args.mock)

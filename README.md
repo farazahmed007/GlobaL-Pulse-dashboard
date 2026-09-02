@@ -1,25 +1,38 @@
 # 🌍 AI Global Pulse Dashboard
 
-A real-time global intelligence dashboard that scrapes live news feeds, processes the text through a Natural Language Processing (NLP) pipeline, and visualizes global sentiment across 2D, 3D, and interactive map formats. 
+A real-time global intelligence dashboard that scrapes live news feeds, processes the text through a Natural Language Processing (NLP) pipeline, and visualizes global sentiment across 2D, 3D, and interactive map formats.
 
-## 🚀 Features
-* **Live News Ingestion:** Dynamically scrapes the latest articles from major global RSS feeds (BBC, CNN, Al Jazeera, etc.).
-* **NLP Pipeline:** * **Sentiment Analysis:** Utilizes TextBlob to calculate `Sentiment_Score` (-1.0 to 1.0) and `Subjectivity_Score` (0.0 to 1.0) for every article summary.
-  * **Named Entity Recognition (NER):** Uses spaCy (`en_core_web_sm`) to extract geopolitical entities (GPE), People, and Organizations from the text.
-* **Geocoding:** Maps extracted locations to exact Latitude/Longitude coordinates.
-* **Advanced Visualizations:** * Interactive 3D Scatter Clustering (Sentiment vs. Subjectivity vs. Word Count).
-  * Real-time Sentiment Area Charts and Objectivity Quadrants.
-  * Global PyDeck Map plotting news intensity and mood by region.
-* **Custom Dark UI:** Built with a fully customized, high-contrast dark theme optimized for data readability.
+## 🏗️ System Architecture
 
-## 🛠️ Tech Stack
-* **Core:** Python, Pandas
-* **Frontend:** Streamlit
-* **NLP:** spaCy, TextBlob
-* **Geocoding:** Geopy
-* **Data Visualization:** Plotly Express, PyDeck
+The end-to-end data flow operates through a robust ETL (Extract, Transform, Load) pipeline, pulling live unstructured data and structuring it for immediate analytical presentation.
 
-## 💻 Installation & Setup
+```text
++----------------+      +--------------------------+      +----------------+      +--------------------+
+|                |      |                          |      |                |      |                    |
+|  NewsAPI /     | ---> |   Agentic NLP Pipeline   | ---> |   MongoDB      | ---> |  Streamlit App     |
+|  Live Feeds    |      |   (LLM Extraction)       |      |   (Storage)    |      |  (Presentation)    |
+|  (Ingestion)   |      |   (Transformation)       |      |                |      |                    |
++----------------+      +--------------------------+      +----------------+      +--------------------+
+                              |                                ^                           |
+                              |   Extracts Title, Country,     |                           |
+                              |   Sentiment, and Entities      |                           v
+                              +--------------------------------+                  Interactive Analytics
+                                                                                  & Geo-Spatial Views
+```
+
+## 🧠 Data Engineering Concepts Demonstrated
+
+This project is built around modern data engineering best practices:
+
+* **ETL Design & Agentic Transformation**: Demonstrates an advanced extraction layer where an LLM is used as a data transformer. It takes unstructured article text and rigidly coerces it into a predefined, strictly-typed JSON schema.
+* **Schema-Free Document Modeling (NoSQL)**: Utilizes MongoDB for storage, capitalizing on its flexibility for storing nested JSON (like arrays of extracted entities) and its ability to rapidly handle incoming unstructured or semi-structured data without rigid migrations.
+* **Error Handling & Defensive Loading**: The pipeline implements strict validation for both HTTP requests (timeouts, retries) and LLM outputs. It strips bad markdown, gracefully catches JSON decode errors, and prevents malformed data from crashing the ingestion loop. 
+* **Containerization**: Fully containerized using Docker and Docker Compose. This encapsulates the backend pipeline, the presentation layer, and the database into a unified, easily reproducible environment.
+* **Mock/Simulation Capabilities**: Provides a `--mock` CLI flag to simulate API calls and data ingestion, ensuring reliable presentation and testing even when network constraints or rate limits apply.
+
+## 🚀 Quickstart Guide
+
+You can launch the complete end-to-end system (MongoDB database, data pipeline, and interactive dashboard) using Docker Compose.
 
 1. **Clone the repository:**
    ```bash
@@ -27,47 +40,31 @@ A real-time global intelligence dashboard that scrapes live news feeds, processe
    cd YourRepoName
    ```
 
-2. **Set up a Virtual Environment:**
+2. **Configure Environment (Optional for Live Mode):**
+   If you intend to run the live extraction pipeline, provide your API keys in a `.env` file or directly inside `docker-compose.yml`:
+   ```env
+   NEWS_API_KEY=your_newsapi_key_here
+   LLM_API_KEY=your_llm_api_key_here
+   ```
+
+3. **Start the System:**
+   Build and start the containers using Docker Compose:
    ```bash
-   python -m venv venv
-   # On Windows PowerShell:
-   .\venv\Scripts\Activate.ps1
-   # On macOS/Linux:
-   source venv/bin/activate
+   docker compose up --build
    ```
 
-3. **Install the required dependencies:**
+4. **Populate Mock Data (Recommended for Demos):**
+   Once the containers are running, you can populate the database without needing live API keys or internet access by using the `--mock` flag. Open a new terminal and run:
    ```bash
-   pip install -r requirements.txt
-   # For the newly added data extraction pipeline:
-   pip install requests pymongo
+   docker compose exec pulse_pipeline_worker python sentiment_pipeline.py --mock
    ```
+   *(Alternatively, if you modified `docker-compose.yml` to include the `--mock` flag in the command, this step is handled automatically).*
 
-4. **Download the spaCy English language model:**
-   ```bash
-   python -m spacy download en_core_web_sm
-   ```
-
-5. **Environment Variables (for `sentiment_pipeline.py`):**
-   Ensure you have your API keys set in your terminal before running the data pipeline.
-   ```powershell
-   $env:NEWS_API_KEY="your_news_api_key"
-   $env:LLM_API_KEY="your_llm_api_key"
-   $env:MONGO_URI="mongodb://localhost:27017/"
-   ```
-
-6. **Run the application:**
-   ```bash
-   # To start the visual dashboard:
-   streamlit run app.py
-
-   # To run the background sentiment data extraction:
-   python sentiment_pipeline.py
-   ```
+5. **View the Dashboard:**
+   Navigate to [http://localhost:8501](http://localhost:8501) in your browser to view the live dashboard rendering the data.
 
 ## 📂 Project Structure
-app.py: The main Streamlit application containing the UI, visualizations, and NLP logic.
-
-requirements.txt: List of required Python packages.
-
-.streamlit/config.toml: Custom theme configuration for the dark/orange UI.
+* `app.py`: The main Streamlit application containing the UI, visualizations, and analytics logic.
+* `sentiment_pipeline.py`: The background ETL script that handles data ingestion, LLM interaction, and database insertion.
+* `Dockerfile` / `docker-compose.yml`: Containerization instructions for a reproducible environment.
+* `requirements.txt`: Python package dependencies.
