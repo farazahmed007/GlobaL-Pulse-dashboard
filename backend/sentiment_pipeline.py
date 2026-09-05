@@ -108,7 +108,7 @@ def call_llm_api(prompt, mock=False):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "gemini-1.5-flash", # Using Gemini's OpenAI-compatible endpoint
+        "model": os.getenv("LLM_MODEL", "gemini-3.8-flash"), # Using Gemini's OpenAI-compatible endpoint
         "messages": [
             {"role": "user", "content": prompt}
         ],
@@ -132,6 +132,12 @@ def call_llm_api(prompt, mock=False):
         return None
 
 def main(mock=False):
+    # Auto-fallback to mock if keys are default or missing
+    if not mock and (NEWS_API_KEY in ["your_newsapi_key_here", "your_newsapi_key", ""] or 
+                     LLM_API_KEY in ["your_llm_api_key_here", "your_llm_api_key", ""]):
+        logging.warning("Default or missing API keys detected. Automatically falling back to MOCK mode.")
+        mock = True
+
     # 1. Fetch latest headlines
     articles = fetch_headlines(mock=mock)
     if not articles:

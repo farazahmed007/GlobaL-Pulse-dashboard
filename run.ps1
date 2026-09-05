@@ -57,6 +57,6 @@ if ($Mock) {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "🚀 Dashboard is now available at: http://localhost:3000" -ForegroundColor Green
-Write-Host "🛑 To stop the application, run: docker compose down" -ForegroundColor Yellow
+Write-Host "Dashboard is now available at: http://localhost:3000" -ForegroundColor Green
+Write-Host "To stop the application and clear data, run: docker compose down -v" -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Cyan
