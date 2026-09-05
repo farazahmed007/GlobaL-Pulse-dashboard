@@ -9,12 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "d3-scale": "^4.0.2",
+    "lucide-react": "^0.303.0",
+    "mongodb": "^6.3.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "mongodb": "^6.3.0",
-    "recharts": "^2.10.3",
-    "lucide-react": "^0.303.0"
+    "react-simple-maps": "^3.0.0",
+    "recharts": "^2.10.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
