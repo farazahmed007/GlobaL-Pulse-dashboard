@@ -24,7 +24,7 @@ param (
 )
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  🌍 AI Global Pulse Dashboard Setup    " -ForegroundColor Cyan
+Write-Host "  AI Global Pulse Dashboard Setup    " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -49,7 +49,7 @@ if ($Mock) {
     Write-Host "[INFO] Waiting 5 seconds for containers to initialize..." -ForegroundColor Yellow
     Start-Sleep -Seconds 5
     Write-Host "[INFO] Running pipeline in Mock mode (synthetic data)..." -ForegroundColor Magenta
-    docker compose exec pulse_pipeline_worker python sentiment_pipeline.py --mock
+    docker compose run --rm pipeline_worker python sentiment_pipeline.py --mock
 } else {
     Write-Host "[INFO] Running in Live mode." -ForegroundColor Yellow
     Write-Host "[!] Ensure you have configured your .env file or docker-compose.yml with valid NEWS_API_KEY and LLM_API_KEY." -ForegroundColor Yellow

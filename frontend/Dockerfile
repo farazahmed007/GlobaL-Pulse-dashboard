@@ -14,6 +14,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Next.js telemetry is disabled
 ENV NEXT_TELEMETRY_DISABLED 1
+
+# Provide a dummy MONGO_URI for build-time static evaluation
+ENV MONGO_URI="mongodb://mongodb:27017/"
+
 RUN npm run build
 
 # Production image, copy all the files and run next
