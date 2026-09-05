@@ -102,13 +102,13 @@ def call_llm_api(prompt, mock=False):
         }
         return json.dumps(mock_json)
 
-    url = "https://api.openai.com/v1/chat/completions"
+    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
     headers = {
         "Authorization": f"Bearer {LLM_API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "gpt-4o-mini", # Replace with your specific LLM model 
+        "model": "gemini-1.5-flash", # Using Gemini's OpenAI-compatible endpoint
         "messages": [
             {"role": "user", "content": prompt}
         ],
