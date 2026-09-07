@@ -188,7 +188,7 @@ export default function Dashboard() {
             
             {/* Tabs */}
             <div className="flex items-center gap-2 bg-gray-950 p-1 rounded-lg border border-gray-800">
-              {['Dashboard', 'Global Map', 'ELT Pipeline'].map((tab) => (
+              {['Dashboard', 'Global Map', 'ETL Pipeline'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -200,7 +200,7 @@ export default function Dashboard() {
                 >
                   {tab === 'Dashboard' && <Activity className="w-4 h-4 inline-block mr-2 -mt-0.5" />}
                   {tab === 'Global Map' && <MapIcon className="w-4 h-4 inline-block mr-2 -mt-0.5" />}
-                  {tab === 'ELT Pipeline' && <Network className="w-4 h-4 inline-block mr-2 -mt-0.5" />}
+                  {tab === 'ETL Pipeline' && <Network className="w-4 h-4 inline-block mr-2 -mt-0.5" />}
                   {tab}
                 </button>
               ))}
@@ -503,13 +503,13 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* ELT Pipeline Tab Content */}
-            {activeTab === 'ELT Pipeline' && (
+            {/* ETL Pipeline Tab Content */}
+            {activeTab === 'ETL Pipeline' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8">
-                  <h2 className="text-2xl font-bold text-white mb-2">Under the Hood: ELT Architecture</h2>
+                  <h2 className="text-2xl font-bold text-white mb-2">Under the Hood: ETL Architecture</h2>
                   <p className="text-gray-400 mb-10 max-w-2xl">
-                    Global Pulse leverages a modern Extract, Load, Transform (ELT) architecture running in isolated Docker containers to guarantee robust data ingestion and presentation.
+                    Global Pulse leverages a modern Extract, Transform, Load (ETL) architecture running in isolated Docker containers to guarantee robust data ingestion and presentation.
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">

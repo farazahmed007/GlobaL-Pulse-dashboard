@@ -45,9 +45,9 @@ def fetch_historical_headlines(date_str):
         logging.error(f"Error fetching from NewsAPI for {date_str}: {e}")
         return []
 
-def main():
-    if NEWS_API_KEY in ["your_newsapi_key_here", "your_newsapi_key", ""] or \
-       LLM_API_KEY in ["your_llm_api_key_here", "your_llm_api_key", ""]:
+def main(mock=False):
+    if not mock and (NEWS_API_KEY in ["your_newsapi_key_here", "your_newsapi_key", ""] or \
+       LLM_API_KEY in ["your_llm_api_key_here", "your_llm_api_key", ""]):
         logging.warning("Default or missing API keys detected. API calls may fail.")
 
     try:
@@ -70,6 +70,8 @@ def main():
         target_date = today - timedelta(days=13 - i)
         date_str = target_date.isoformat()
         
+        # If in mock mode, we could mock headlines too, but let's try real NewsAPI first 
+        # unless it fails. Actually, let's just use real NewsAPI for headlines and mock LLM if mock=True.
         articles = fetch_historical_headlines(date_str)
         
         if not articles:
@@ -89,7 +91,7 @@ def main():
             prompt = PROMPT_TEMPLATE.format(input_text=text_to_analyze)
             
             # Send to LLM
-            llm_response = call_llm_api(prompt, mock=False)
+            llm_response = call_llm_api(prompt, mock=mock)
             if not llm_response:
                 continue
                 
@@ -139,4 +141,8 @@ def main():
         time.sleep(1)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Seed Database with Historical Data")
+    parser.add_argument("--mock", action="store_true", help="Run with mock LLM responses to bypass rate limits")
+    args = parser.parse_args()
+    main(mock=args.mock)
