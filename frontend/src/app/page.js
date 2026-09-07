@@ -182,7 +182,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <Globe className="w-8 h-8 text-emerald-500" />
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
-                Global Pulse
+                Semantic Analysis
               </span>
             </div>
             
