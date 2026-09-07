@@ -80,7 +80,15 @@ For Windows users, use the provided automation scripts (`run.bat` or `run.ps1`) 
    docker compose exec pulse_pipeline_worker python sentiment_pipeline.py --mock
    ```
 
-### 3. Viewing the Dashboard
+### 3. Seeding the Database (Optional)
+
+To populate the database with up to 14 days of historical sentiment data, you can run the backfill script inside the running worker container. *(Note: This requires valid API keys in your `.env` file).*
+
+```bash
+docker compose exec pulse_pipeline_worker python historical_backfill.py
+```
+
+### 4. Viewing the Dashboard
 Once the containers are running, open your web browser and navigate to:
 **[http://localhost:3000](http://localhost:3000)**
 

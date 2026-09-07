@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Activity, Globe, MessageSquare, AlertCircle, Map as MapIcon, Database, Network, Server, ArrowRight } from 'lucide-react';
+import { Activity, Globe, MessageSquare, AlertCircle, Map as MapIcon, Database, Network, Server, ArrowRight, Download, BarChart2, MinusCircle } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, Sphere, Graticule } from 'react-simple-maps';
 import { scaleLinear } from 'd3-scale';
 
@@ -109,6 +109,41 @@ export default function Dashboard() {
     return avg;
   }, [data]);
 
+  const averageSentiment = useMemo(() => {
+    if (!data.length) return 0;
+    const total = data.reduce((acc, curr) => acc + (curr.sentiment_score || 0), 0);
+    return (total / data.length).toFixed(2);
+  }, [data]);
+
+  const handleDownloadCSV = () => {
+    if (!data || !data.length) return;
+    
+    const headers = ['Title', 'Country', 'Sentiment Score', 'Sentiment Label', 'Entities'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => {
+        return [
+          `"${(row.title || '').replace(/"/g, '""')}"`,
+          `"${row.country || 'Global'}"`,
+          row.sentiment_score || 0,
+          `"${row.sentiment_label || 'neutral'}"`,
+          `"${(row.entities || []).join('; ')}"`
+        ].join(',');
+      })
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'global_pulse_data.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
@@ -201,34 +236,54 @@ export default function Dashboard() {
             {activeTab === 'Dashboard' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Header Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 flex items-center gap-4">
-                    <div className="p-3 bg-blue-500/10 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 xl:p-6 flex items-center gap-4">
+                    <div className="p-3 bg-blue-500/10 rounded-xl shrink-0">
                       <MessageSquare className="w-6 h-6 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-gray-400 text-sm font-medium">Total Articles Processed</p>
-                      <h3 className="text-3xl font-bold text-white">{data.length}</h3>
+                      <p className="text-gray-400 text-xs xl:text-sm font-medium">Total Articles</p>
+                      <h3 className="text-2xl xl:text-3xl font-bold text-white">{data.length}</h3>
                     </div>
                   </div>
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-500/10 rounded-xl">
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 xl:p-6 flex items-center gap-4">
+                    <div className="p-3 bg-purple-500/10 rounded-xl shrink-0">
+                      <BarChart2 className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-xs xl:text-sm font-medium">Avg Sentiment</p>
+                      <h3 className="text-2xl xl:text-3xl font-bold text-white">{averageSentiment}</h3>
+                    </div>
+                  </div>
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 xl:p-6 flex items-center gap-4">
+                    <div className="p-3 bg-emerald-500/10 rounded-xl shrink-0">
                       <Activity className="w-6 h-6 text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-gray-400 text-sm font-medium">Positive Sentiments</p>
-                      <h3 className="text-3xl font-bold text-white">
+                      <p className="text-gray-400 text-xs xl:text-sm font-medium">Positive</p>
+                      <h3 className="text-2xl xl:text-3xl font-bold text-white">
                         {sentimentData.find(d => d.name === 'Positive')?.value || 0}
                       </h3>
                     </div>
                   </div>
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 flex items-center gap-4">
-                    <div className="p-3 bg-red-500/10 rounded-xl">
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 xl:p-6 flex items-center gap-4">
+                    <div className="p-3 bg-gray-500/10 rounded-xl shrink-0">
+                      <MinusCircle className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-xs xl:text-sm font-medium">Neutral</p>
+                      <h3 className="text-2xl xl:text-3xl font-bold text-white">
+                        {sentimentData.find(d => d.name === 'Neutral')?.value || 0}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 xl:p-6 flex items-center gap-4">
+                    <div className="p-3 bg-red-500/10 rounded-xl shrink-0">
                       <AlertCircle className="w-6 h-6 text-red-400" />
                     </div>
                     <div>
-                      <p className="text-gray-400 text-sm font-medium">Negative Sentiments</p>
-                      <h3 className="text-3xl font-bold text-white">
+                      <p className="text-gray-400 text-xs xl:text-sm font-medium">Negative</p>
+                      <h3 className="text-2xl xl:text-3xl font-bold text-white">
                         {sentimentData.find(d => d.name === 'Negative')?.value || 0}
                       </h3>
                     </div>
@@ -295,8 +350,15 @@ export default function Dashboard() {
 
                 {/* Data Table */}
                 <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
-                  <div className="p-6 border-b border-gray-800">
+                  <div className="p-6 border-b border-gray-800 flex justify-between items-center flex-wrap gap-4">
                     <h3 className="text-lg font-semibold text-gray-200">Recent Intelligence Feed</h3>
+                    <button 
+                      onClick={handleDownloadCSV}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-sm font-medium transition-colors border border-gray-700"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export CSV
+                    </button>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
