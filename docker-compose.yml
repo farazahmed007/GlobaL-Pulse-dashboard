@@ -9,7 +9,7 @@ services:
     image: mongo:latest
     container_name: pulse_mongodb
     ports:
-      - "27017:27017"
+      - "27018:27017"
     # Architectural Choice: A persistent named volume ensures that our ingested NLP data 
     # survives container restarts and isn't lost if the DB container is spun down.
     volumes:
